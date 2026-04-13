@@ -1,0 +1,96 @@
+version: "3.9"
+
+services:
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - internal
+
+  # ── Flask Backend ───────────────────────────────────────────────────────────
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - db
+    networks:
+      - internal
+    # VULN: container runs as root (no USER directive in Dockerfile)
+    # If exploited, attacker has root inside the container
+
+  # ── React Frontend (served by nginx inside the container) ──────────────────
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    networks:
+      - internal
+
+  # ── Nginx Reverse Proxy ─────────────────────────────────────────────────────
+  nginx:
+    image: nginx:1.25-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - internal
+
+  # ── Loki (log aggregation) ──────────────────────────────────────────────────
+  loki:
+    image: grafana/loki:2.9.0
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - internal
+
+  # ── Promtail (log shipper → Loki) ──────────────────────────────────────────
+  promtail:
+    image: grafana/promtail:2.9.0
+    restart: unless-stopped
+    volumes:
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - internal
+
+  # ── Grafana (dashboard) ─────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:10.2.0
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file: .env
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./dashboard/grafana-datasource.yml:/etc/grafana/provisioning/datasources/datasource.yml:ro
+    depends_on:
+      - loki
+    networks:
+      - internal
+
+volumes:
+  postgres_data:
+  grafana_data:
+
+networks:
+  internal:
+    driver: bridge
