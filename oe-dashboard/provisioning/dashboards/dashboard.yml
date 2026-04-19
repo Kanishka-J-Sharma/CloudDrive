@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: CloudDrive OE
+    orgId: 1
+    folder: CloudDrive
+    type: file
+    disableDeletion: true
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards
