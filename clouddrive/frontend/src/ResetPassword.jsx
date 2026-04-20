@@ -29,13 +29,14 @@ const styles = {
   link: { textAlign: "center", marginTop: 16, fontSize: 13 },
 };
 
-export default function Register() {
-  const [email, setEmail]         = useState("");
+export default function ResetPassword() {
+  const token = new URLSearchParams(window.location.search).get("token") || "";
+
   const [password, setPassword]   = useState("");
   const [confirm, setConfirm]     = useState("");
   const [error, setError]         = useState("");
   const [loading, setLoading]     = useState(false);
-  const [registered, setRegistered] = useState(false);
+  const [success, setSuccess]     = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -44,27 +45,34 @@ export default function Register() {
     if (password.length < 8)  { setError("Password must be at least 8 characters"); return; }
     setLoading(true);
     try {
-      await api.post("/auth/register", { email, password });
-      setRegistered(true);
+      await api.post("/auth/reset-password", { token, new_password: password });
+      setSuccess(true);
     } catch (err) {
-      setError(err.response?.data?.error || "Registration failed");
+      setError(err.response?.data?.error || "Reset failed");
     } finally {
       setLoading(false);
     }
   };
 
-  if (registered) {
+  if (!token) {
     return (
       <div style={styles.page}>
         <div style={styles.card}>
-          <h1 style={styles.title}>Check Your Email</h1>
-          <p style={styles.success}>
-            Account created! Please check your email and click the verification link
-            before logging in.
-          </p>
-          <p style={styles.link}>
-            <Link to="/login">Back to login</Link>
-          </p>
+          <h1 style={styles.title}>Reset Password</h1>
+          <p style={styles.error}>Invalid or missing reset token.</p>
+          <p style={styles.link}><Link to="/login">Back to login</Link></p>
+        </div>
+      </div>
+    );
+  }
+
+  if (success) {
+    return (
+      <div style={styles.page}>
+        <div style={styles.card}>
+          <h1 style={styles.title}>Reset Password</h1>
+          <p style={styles.success}>Password reset successfully!</p>
+          <p style={styles.link}><Link to="/login">Back to login</Link></p>
         </div>
       </div>
     );
@@ -73,25 +81,17 @@ export default function Register() {
   return (
     <div style={styles.page}>
       <div style={styles.card}>
-        <h1 style={styles.title}>Create Account</h1>
+        <h1 style={styles.title}>Reset Password</h1>
         <form onSubmit={handleSubmit}>
           {error && <p style={styles.error}>{error}</p>}
-          <label style={styles.label}>Email</label>
-          <input
-            style={styles.input}
-            type="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            required
-            autoFocus
-          />
-          <label style={styles.label}>Password</label>
+          <label style={styles.label}>New Password</label>
           <input
             style={styles.input}
             type="password"
             value={password}
             onChange={e => setPassword(e.target.value)}
             required
+            autoFocus
           />
           <label style={styles.label}>Confirm Password</label>
           <input
@@ -102,12 +102,10 @@ export default function Register() {
             required
           />
           <button style={styles.btn} type="submit" disabled={loading}>
-            {loading ? "Creating account…" : "Register"}
+            {loading ? "Resetting…" : "Reset Password"}
           </button>
         </form>
-        <p style={styles.link}>
-          Already have an account? <Link to="/login">Sign In</Link>
-        </p>
+        <p style={styles.link}><Link to="/login">Back to login</Link></p>
       </div>
     </div>
   );

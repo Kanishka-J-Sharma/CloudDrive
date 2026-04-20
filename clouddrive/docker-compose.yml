@@ -14,6 +14,11 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - internal
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "0.5"
 
   # ── Flask Backend ───────────────────────────────────────────────────────────
   backend:
@@ -24,8 +29,11 @@ services:
       - db
     networks:
       - internal
-    # VULN: container runs as root (no USER directive in Dockerfile)
-    # If exploited, attacker has root inside the container
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "0.5"
 
   # ── React Frontend (served by nginx inside the container) ──────────────────
   frontend:
@@ -33,6 +41,11 @@ services:
     restart: unless-stopped
     networks:
       - internal
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "0.5"
 
   # ── Nginx Reverse Proxy ─────────────────────────────────────────────────────
   nginx:
@@ -47,6 +60,11 @@ services:
       - frontend
     networks:
       - internal
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "0.5"
 
   # ── Loki (log aggregation) ──────────────────────────────────────────────────
   loki:
@@ -57,17 +75,27 @@ services:
     command: -config.file=/etc/loki/local-config.yaml
     networks:
       - internal
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "0.5"
 
   # ── Promtail (log shipper → Loki) ──────────────────────────────────────────
   promtail:
     image: grafana/promtail:2.9.0
     restart: unless-stopped
     volumes:
-      - /var/log:/var/log:ro
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./dashboard/promtail-config.yml:/etc/promtail/config.yml:ro
     command: -config.file=/etc/promtail/config.yml
     networks:
       - internal
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "0.5"
 
   # ── Grafana (dashboard) ─────────────────────────────────────────────────────
   grafana:
@@ -82,10 +110,17 @@ services:
     volumes:
       - grafana_data:/var/lib/grafana
       - ./dashboard/grafana-datasource.yml:/etc/grafana/provisioning/datasources/datasource.yml:ro
+      - ./dashboard/grafana-dashboard-provider.yml:/etc/grafana/provisioning/dashboards/clouddrive-provider.yml:ro
+      - ./dashboard/dashboards:/etc/grafana/provisioning/dashboards/files:ro
     depends_on:
       - loki
     networks:
       - internal
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "0.5"
 
 volumes:
   postgres_data:

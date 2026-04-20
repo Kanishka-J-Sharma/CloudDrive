@@ -1,4 +1,3 @@
-# ── Build stage ────────────────────────────────────────────────────────────────
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -8,12 +7,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# VULN: Container runs as root.
-# No "USER" directive means the process runs as UID 0.
-# A successful RCE exploit grants the attacker root inside the container,
-# making container breakout and privilege escalation significantly easier.
-# Fix: add a non-root user and switch to it before CMD.
+RUN addgroup --system appuser && \
+    adduser --system --ingroup appuser appuser && \
+    chown -R appuser:appuser /app
+USER appuser
 
 EXPOSE 5000
 
-CMD ["python", "-m", "flask", "run", "--host=0.0.0.0", "--port=5000"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--timeout", "120", "app:create_app()"]
