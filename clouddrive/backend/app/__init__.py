@@ -94,5 +94,9 @@ def create_app() -> Flask:
     return app
 
 
-# Entrypoint for `flask run`
-app = create_app()
+# Only create the app instance when running directly
+# (not when imported by pytest)
+import os
+if os.environ.get("FLASK_ENV") != "testing" and \
+   os.environ.get("TESTING") != "true":
+    app = create_app()

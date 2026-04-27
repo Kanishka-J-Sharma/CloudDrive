@@ -1,21 +1,38 @@
+import os
 import pytest
+
+# Set testing environment variables BEFORE any app imports
+os.environ.setdefault("TESTING", "true")
+os.environ.setdefault("FLASK_ENV", "testing")
+os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
+os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-only")
+os.environ.setdefault("SECRET_KEY", "test-flask-secret-only")
+os.environ.setdefault("POSTGRES_USER", "test")
+os.environ.setdefault("POSTGRES_PASSWORD", "test")
+os.environ.setdefault("POSTGRES_DB", "test")
+os.environ.setdefault("AWS_ACCESS_KEY_ID", "test")
+os.environ.setdefault("AWS_SECRET_ACCESS_KEY", "test")
+os.environ.setdefault("AWS_REGION", "us-east-1")
+os.environ.setdefault("S3_BUCKET_NAME", "test-bucket")
+os.environ.setdefault("MAIL_SUPPRESS_SEND", "1")
+
 from app import create_app, db as _db
 from app.models import User
 
 @pytest.fixture(scope="session")
 def app():
-    app = create_app()
-    app.config.update({
+    application = create_app()
+    application.config.update({
         "TESTING": True,
         "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
-        "JWT_SECRET_KEY": "test-secret-key-for-testing-only",
-        "JWT_EXPIRY": __import__("datetime").timedelta(hours=1),
+        "JWT_SECRET_KEY": "test-secret-key-only",
         "RATELIMIT_ENABLED": False,
         "MAIL_SUPPRESS_SEND": True,
+        "WTF_CSRF_ENABLED": False,
     })
-    with app.app_context():
+    with application.app_context():
         _db.create_all()
-        yield app
+        yield application
         _db.drop_all()
 
 @pytest.fixture
@@ -25,11 +42,12 @@ def client(app):
 @pytest.fixture
 def auth_client(client, app):
     with app.app_context():
-        from app.models import User
         from app import bcrypt
         user = User(
             email="testuser@example.com",
-            password_hash=bcrypt.generate_password_hash("TestPass123!").decode(),
+            password_hash=bcrypt.generate_password_hash(
+                "TestPass123!"
+            ).decode("utf-8"),
             is_verified=True
         )
         _db.session.add(user)
