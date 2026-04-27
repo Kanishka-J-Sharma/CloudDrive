@@ -45,7 +45,7 @@ class TestAuth:
 
     def test_unauthenticated_file_list_rejected(self, client):
         """File list endpoint rejects requests without a valid token."""
-        resp = client.get("/api/files")
+        resp = client.get("/api/files/", follow_redirects=True)
         assert resp.status_code == 401
 
     def test_forgot_password_always_returns_200(self, client):
@@ -65,7 +65,7 @@ class TestAuth:
 class TestFiles:
     def test_file_list_requires_auth(self, client):
         """GET /api/files returns 401 without authentication."""
-        resp = client.get("/api/files")
+        resp = client.get("/api/files/", follow_redirects=True)
         assert resp.status_code == 401
 
     def test_upload_url_requires_auth(self, client):
